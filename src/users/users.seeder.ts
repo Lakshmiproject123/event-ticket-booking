@@ -9,13 +9,16 @@ export class UsersSeeder implements OnApplicationBootstrap {
 
   async onApplicationBootstrap() {
     const existingAdmin = await this.usersService.getUserByEmail('admin@example.com');
+
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.hash('Admin@123', 10);
+
       await this.usersService.create({
         email: 'admin@example.com',
         password: hashedPassword,
         role: UserRole.ADMIN,
       });
+
       console.log('Default admin created: admin@example.com / Admin@123');
     }
   }
