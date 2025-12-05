@@ -24,7 +24,7 @@ export class BookingsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new booking for an event' })
-  @ApiResponse({ status: 201, description: 'Booking created successfully', type: Booking })
+  @ApiResponse({ status: 201, description: 'Booking created successfully'})
   @ApiResponse({ status: 400, description: 'Bad request or seats not available' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createBooking(@Req() req: any, @Body() dto: CreateBookingDto) {
@@ -37,7 +37,7 @@ export class BookingsController {
 
   @Post(':id/confirm')
   @ApiOperation({ summary: 'Confirm a pending booking' })
-  @ApiResponse({ status: 200, description: 'Booking confirmed successfully', type: Booking })
+  @ApiResponse({ status: 200, description: 'Booking confirmed successfully'})
   @ApiResponse({ status: 400, description: 'Booking cannot be confirmed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async confirmBooking(@Req() req: any, @Param('id') bookingId: string) {
@@ -50,8 +50,8 @@ export class BookingsController {
 
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancel a booking' })
-  @ApiResponse({ status: 200, description: 'Booking cancelled successfully', type: Booking })
-  @ApiResponse({ status: 400, description: 'Booking cannot be cancelled' })
+  @ApiResponse({ status: 200, description: 'Booking cancelled successfully' })
+  @ApiResponse({ status: 400, description: 'Booking cannot be cancelled'})
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async cancelBooking(@Req() req: any, @Param('id') bookingId: string) {
     try {
@@ -63,7 +63,7 @@ export class BookingsController {
 
   @Get('my')
   @ApiOperation({ summary: 'Get all bookings of the logged-in user' })
-  @ApiResponse({ status: 200, description: 'List of bookings', type: [Booking] })
+  @ApiResponse({ status: 200, description: 'List of bookings'})
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getMyBookings(@Req() req: any) {
     try {
@@ -75,7 +75,7 @@ export class BookingsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a booking by its ID' })
-  @ApiResponse({ status: 200, description: 'Booking details', type: Booking })
+  @ApiResponse({ status: 200, description: 'Booking details'})
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Booking not found' })
   async getBookingById(@Req() req: any, @Param('id') bookingId: string) {
