@@ -1,13 +1,11 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards, HttpStatus, HttpException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards, HttpStatus, HttpException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
-import { ApiTags, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../roles/roles.decorator';
-import { UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-
 
 @ApiTags('events')
 @ApiBearerAuth('JWT')
@@ -37,6 +35,7 @@ export class EventsController {
         type: CreateEventDto,
         required: true,
     })
+    @ApiOperation({ summary: 'Create a new event (Admin only)' })
     @ApiResponse({ status: 201, description: 'Event created successfully' })
     @ApiResponse({ status: 403, description: 'Forbidden. Only admin can create events' })
     async create(
@@ -54,13 +53,17 @@ export class EventsController {
         return await this.eventsService.create(dto, banner);
     }
 
-
     @Get()
+    @ApiOperation({ summary: 'Get list of all events' })
+    @ApiResponse({ status: 200, description: 'List of events fetched successfully' })
     async findAll() {
         return this.eventsService.findAll();
     }
 
     @Get(':id')
+    @ApiOperation({ summary: 'Get details of a specific event by ID' })
+    @ApiResponse({ status: 200, description: 'Event details fetched successfully' })
+    @ApiResponse({ status: 404, description: 'Event not found' })
     async findOne(@Param('id') id: string) {
         return this.eventsService.findOne(id);
     }
@@ -73,6 +76,9 @@ export class EventsController {
         description: 'Update event fields, including optional banner image',
         type: UpdateEventDto,
     })
+    @ApiOperation({ summary: 'Update an existing event (Admin only)' })
+    @ApiResponse({ status: 200, description: 'Event updated successfully' })
+    @ApiResponse({ status: 403, description: 'Forbidden. Only admin can update events' })
     async update(
         @Param('id') id: string,
         @UploadedFile() banner: Express.Multer.File,
@@ -81,5 +87,4 @@ export class EventsController {
     ) {
         return this.eventsService.update(id, dto, banner);
     }
-
 }
