@@ -45,7 +45,11 @@ export class AuthService {
                 throw new HttpException('User not found', HttpStatus.NOT_FOUND);
             }
 
-            const accessToken = this.jwtService.sign({ sub: user.id, role: user.role }, { expiresIn: '1h' });
+            const accessToken = this.jwtService.sign(
+                { sub: user.data.id, role: user.data.role },
+                { expiresIn: '1h' },
+            );
+
 
             return {
                 statusCode: HttpStatus.OK,
