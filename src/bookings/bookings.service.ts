@@ -10,7 +10,6 @@ import { Booking, BookingStatus } from './bookings.model';
 import { Seat, SeatStatus } from '../seats/seats.model';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { Op } from 'sequelize';
-import { SeatsService } from '../seats/seats.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
@@ -19,11 +18,13 @@ export class BookingsService {
 
   constructor(
     @InjectModel(Booking) private bookingModel: typeof Booking,
-    private seatsService: SeatsService,
     @InjectModel(Seat) private seatModel: typeof Seat,
   ) { }
 
-  async createBooking(userId: string, eventId: string, dto: CreateBookingDto) {
+  async createBooking(userId: string, eventId: string, dto: CreateBookingDto, userRole: string) {
+    if (userRole === 'admin') {
+      throw new ForbiddenException('Admin cannot create bookings');
+    }
 
     const now = new Date();
 
@@ -32,73 +33,65 @@ export class BookingsService {
         id: dto.seatIds,
         [Op.or]: [
           { status: SeatStatus.AVAILABLE },
-          {
-            [Op.and]: [
-              { status: SeatStatus.LOCKED },
-              { lockExpiresAt: { [Op.lt]: now } },   
-            ],
-          },
+          { status: SeatStatus.LOCKED, lockExpiresAt: { [Op.lt]: now } },
         ],
       },
     });
 
     if (seats.length !== dto.seatIds.length) {
-      throw new BadRequestException('One or more seats are not available');
+      throw new BadRequestException('One or more seats are not available or already booked');
     }
-
-    await this.seatModel.update(
-      { status: SeatStatus.AVAILABLE, lockExpiresAt: null },
-      {
-        where: {
-          id: dto.seatIds,
-          status: SeatStatus.LOCKED,
-          lockExpiresAt: { [Op.lt]: now },
-        },
-      },
-    );
 
     const lockExpiresAt = new Date(Date.now() + 2 * 60 * 1000);
 
-    const [lockCount] = await this.seatModel.update(
+    await this.seatModel.update(
       { status: SeatStatus.LOCKED, lockExpiresAt },
       {
-        where: {
-          id: dto.seatIds,
-          status: SeatStatus.AVAILABLE,
-        },
+        where: { id: dto.seatIds, status: SeatStatus.AVAILABLE },
       },
     );
-
-    if (lockCount !== dto.seatIds.length) {
-      throw new BadRequestException('Could not lock all seats. Try again.');
-    }
 
     const booking = await this.bookingModel.create({
       userId,
       eventId,
       status: BookingStatus.PENDING,
       expiresAt: lockExpiresAt,
-      seats: seats.map(s => ({
-        seatId: s.id,
-        seatNumber: s.seatNumber,
-      })),
+      seats: seats.map(s => ({ seatId: s.id, seatNumber: s.seatNumber })),
     });
 
-    return booking;
+    return {
+      statusCode: 201,
+      message: 'Booking created successfully',
+      data: booking,
+    };
   }
-
 
   async confirmBooking(userId: string, bookingId: string) {
     const booking = await this.bookingModel.findByPk(bookingId);
-    if (!booking) throw new NotFoundException('Booking not found');
-    console.log('Booking.userId:', booking.userId);
-    console.log('Requesting userId:', userId);
-    if (booking.userId !== userId) throw new ForbiddenException('Not your booking');
+
+    if (!booking) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Booking not found',
+      });
+    }
+
+    if (booking.userId !== userId) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Not your booking',
+      });
+    }
+
     if (booking.status !== BookingStatus.PENDING) {
-      throw new BadRequestException('Booking cannot be confirmed');
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Booking cannot be confirmed',
+      });
     }
 
     const seatIds = booking.seats.map(s => s.seatId);
+
     await this.seatModel.update(
       { status: SeatStatus.BOOKED, lockExpiresAt: null },
       { where: { id: seatIds } },
@@ -107,31 +100,80 @@ export class BookingsService {
     booking.status = BookingStatus.CONFIRMED;
     booking.expiresAt = null;
     await booking.save();
-    return booking;
+
+    return {
+      statusCode: 200,
+      message: 'Booking confirmed successfully',
+      data: booking,
+    };
   }
 
   async cancelBooking(userId: string, bookingId: string) {
     const booking = await this.bookingModel.findByPk(bookingId);
-    if (!booking) throw new NotFoundException('Booking not found');
-    if (booking.userId !== userId) throw new ForbiddenException('Not your booking');
+
+    if (!booking) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Booking not found',
+      });
+    }
+
+    if (booking.userId !== userId) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Not your booking',
+      });
+    }
 
     const seatIds = booking.seats.map(s => s.seatId);
-    await this.seatModel.update({ status: SeatStatus.AVAILABLE, lockExpiresAt: null }, { where: { id: seatIds } });
+
+    await this.seatModel.update(
+      { status: SeatStatus.AVAILABLE, lockExpiresAt: null },
+      { where: { id: seatIds } },
+    );
 
     booking.status = BookingStatus.CANCELLED;
     await booking.save();
-    return booking;
+
+    return {
+      statusCode: 200,
+      message: 'Booking cancelled successfully',
+      data: booking,
+    };
   }
 
   async getMyBookings(userId: string) {
-    return this.bookingModel.findAll({ where: { userId } });
+    const bookings = await this.bookingModel.findAll({ where: { userId } });
+
+    return {
+      statusCode: 200,
+      message: 'User bookings fetched successfully',
+      data: bookings,
+    };
   }
 
   async getBookingById(userId: string, bookingId: string, isAdmin = false) {
     const booking = await this.bookingModel.findByPk(bookingId);
-    if (!booking) throw new NotFoundException('Booking not found');
-    if (!isAdmin && booking.userId !== userId) throw new ForbiddenException('Not authorized');
-    return booking;
+
+    if (!booking) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Booking not found',
+      });
+    }
+
+    if (!isAdmin && booking.userId !== userId) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Not authorized',
+      });
+    }
+
+    return {
+      statusCode: 200,
+      message: 'Booking details fetched successfully',
+      data: booking,
+    };
   }
 
   async unlockExpiredBookings() {
@@ -144,29 +186,40 @@ export class BookingsService {
       },
     });
 
-    if (!expiredBookings.length) return; 
-    const allSeatIds: string[] = [];
-    expiredBookings.forEach(b => {
-      const seatIds = (b.seats || []).map((s: any) => s.seatId);
-      allSeatIds.push(...seatIds);
-    });
+    if (!expiredBookings.length) {
+      return {
+        statusCode: 200,
+        message: 'No expired bookings found',
+        data: [],
+      };
+    }
+
+    const allSeatIds = expiredBookings.flatMap(b =>
+      (b.seats || []).map((s: any) => s.seatId),
+    );
 
     if (allSeatIds.length) {
       await this.seatModel.update(
         { status: SeatStatus.AVAILABLE, lockExpiresAt: null },
-        { where: { id: allSeatIds } }
+        { where: { id: allSeatIds } },
       );
     }
 
     const bookingIds = expiredBookings.map(b => b.id);
     await this.bookingModel.update(
       { status: BookingStatus.EXPIRED },
-      { where: { id: bookingIds } }
+      { where: { id: bookingIds } },
     );
 
-    expiredBookings.forEach(b => {
-      this.logger.log(`Booking ${b.id} expired and seats released`);
-    });
+    expiredBookings.forEach(b =>
+      this.logger.log(`Booking ${b.id} expired and seats released`),
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Expired bookings unlocked and updated',
+      data: expiredBookings,
+    };
   }
 
   @Cron(CronExpression.EVERY_30_SECONDS)
@@ -174,4 +227,28 @@ export class BookingsService {
     this.logger.log('Running cron: check expired bookings...');
     await this.unlockExpiredBookings();
   }
+
+  async getAllBookings() {
+  const bookings = await this.bookingModel.findAll();
+
+  return {
+    statusCode: 200,
+    message: 'All bookings fetched successfully',
+    data: bookings,
+  };
 }
+
+async getBookingsByEvent(eventId: string) {
+  const bookings = await this.bookingModel.findAll({
+    where: { eventId },
+  });
+
+  return {
+    statusCode: 200,
+    message: 'Bookings for event fetched successfully',
+    data: bookings,
+  };
+}
+}
+
+
