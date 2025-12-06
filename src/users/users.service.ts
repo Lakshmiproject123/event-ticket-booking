@@ -6,63 +6,80 @@ import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
-    constructor(@InjectModel(User) private userModel: typeof User) { }
+    constructor(@InjectModel(User) private userModel: typeof User) {}
 
     async getUserByEmail(email: string): Promise<User | null> {
         return this.userModel.findOne({ where: { email } });
     }
 
-    async getUserById(id: string): Promise<User | null> {
-        return this.userModel.findByPk(id);
+    async getUserById(id: string) {
+        const user = await this.userModel.findByPk(id);
+
+        if (!user) {
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: 'User not found',
+                    data: null
+                },
+                HttpStatus.NOT_FOUND,
+            );
+        }
+
+        return {
+            statusCode: HttpStatus.OK,
+            message: 'User fetched successfully',
+            data: user,
+        };
     }
 
-    //   async create(data: { email: string; password: string; role: string }): Promise<User> {
-    //     try {
-    //       const existingUser = await this.getUserByEmail(data.email);
-    //       if (existingUser) {
-    //         throw new HttpException('Email already exists', HttpStatus.CONFLICT);
-    //       }
-
-    //       return await this.userModel.create(data);
-    //     } catch (error) {
-    //       if (error.name === 'SequelizeUniqueConstraintError') {
-    //         throw new HttpException('Email must be unique', HttpStatus.CONFLICT);
-    //       }
-    //       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
-    //     }
-    //   }
-
-    //   async create(dto: CreateUserDto) {
-    //     const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-    //     return this.userModel.create({
-    //       email: dto.email,
-    //       password: hashedPassword,
-    //       role: dto.role || 'customer',
-    //     });
-    //   }
-    async create(dto: CreateUserDto): Promise<User> {
+    async create(dto: CreateUserDto) {
         try {
             const existingUser = await this.getUserByEmail(dto.email);
             if (existingUser) {
-                throw new HttpException('Email already exists', HttpStatus.CONFLICT);
+                throw new HttpException(
+                    {
+                        statusCode: HttpStatus.CONFLICT,
+                        message: 'Email already exists',
+                        data: null,
+                    },
+                    HttpStatus.CONFLICT,
+                );
             }
 
             const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-            return await this.userModel.create({
+            const user = await this.userModel.create({
                 email: dto.email,
                 password: hashedPassword,
                 role: dto.role || 'customer',
             });
+
+            return {
+                statusCode: HttpStatus.CREATED,
+                message: 'User created successfully',
+                data: user,
+            };
         } catch (error) {
             if (error.name === 'SequelizeUniqueConstraintError') {
-                throw new HttpException('Email must be unique', HttpStatus.CONFLICT);
+                throw new HttpException(
+                    {
+                        statusCode: HttpStatus.CONFLICT,
+                        message: 'Email must be unique',
+                        data: null,
+                    },
+                    HttpStatus.CONFLICT,
+                );
             }
-            throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    message: error.message,
+                    data: null,
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
         }
     }
-
 }
-
-
