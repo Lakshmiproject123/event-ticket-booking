@@ -1,7 +1,13 @@
-import { Table, Column, Model, DataType, PrimaryKey, Default } from 'sequelize-typescript';
-import { v4 as uuidv4 } from 'uuid';
+import { Table, Column, Model, DataType, PrimaryKey, Default, Index } from 'sequelize-typescript';
 
-@Table
+@Table({
+  indexes: [
+    {
+      unique: true,
+      fields: ['title', 'date', 'location'],
+    },
+  ],
+})
 export class Event extends Model {
   @Column({ type: DataType.UUID, primaryKey: true, defaultValue: DataType.UUIDV4 })
   declare readonly id: string;
@@ -21,4 +27,3 @@ export class Event extends Model {
   @Column({ type: DataType.STRING }) 
   bannerUrl: string;
 }
-
