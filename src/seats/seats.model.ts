@@ -7,7 +7,14 @@ export enum SeatStatus {
     BOOKED = 'booked',
 }
 
-@Table
+@Table({
+    indexes: [
+        {
+            unique: true,
+            fields: ['eventId', 'seatNumber'], 
+        },
+    ],
+})
 export class Seat extends Model {
     @Column({
         type: DataType.UUID,
