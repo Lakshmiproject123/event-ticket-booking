@@ -33,6 +33,7 @@ export class AuthController {
     @UseGuards(AuthGuard)
     @Get('me')
     @ApiResponse({ status: 200, description: 'Get current user info' })
+    @ApiOperation({ summary: 'Get current user info' })
     async me(@Req() req: any) {
         return {
             statusCode: 200,
