@@ -22,16 +22,20 @@ Node.js (v16 or higher)
 PostgreSQL
 Docker (optional)
 npm or yarn
+```
 
 ## Project Setup
 
 ### Installation
+```bash
 npm install
 npm install --legacy-peer-deps
+```
 
 ### Environment Setup
 1. Copy the appropriate .env file for your environment:
-   cp .env
+   ```bash
+    cp .env.example .env
    ```
 2. Update the environment variables as needed
 
@@ -39,11 +43,13 @@ npm install --legacy-peer-deps
 #### Using Docker (Recommended)
 ```bash
 docker run --name event-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=eventdb -p 5433:5432  -d postgres
+```
 
 ## Development
 
 ### Running the Application
 # Development mode
+```bash
 npm run start
 
 # Watch mode
@@ -51,6 +57,7 @@ npm run start:dev
 
 # Production mode
 npm run start:prod
+```
 
 ### Code Style and Linting
 - We use ESLint and Prettier for code formatting
@@ -60,6 +67,7 @@ npm run start:prod
 ## Database Management
 
 ### Migration Commands
+```bash
 # Create a new migration
 npx sequelize-cli migration:generate --name create-table --config src/config/config.js
 
@@ -71,10 +79,13 @@ npx sequelize-cli db:migrate:undo --config src/config/config.js
 
 # Undo all migrations
 npx sequelize-cli db:migrate:undo:all --config src/config/config.js
+```
 
  ### Seeding Data
  # Run all seeders
+ ```bash
 npx sequelize-cli db:seed:all --config src/config/config.js
+```
 
 ## Testing
 ```bash
@@ -86,6 +97,7 @@ npm run test:e2e
 
 # Test coverage
 npm run test:cov
+```
 
 ## Project Structure
 ```
@@ -111,7 +123,7 @@ event-ticket-booking/
 ├── package.json
 ├── tsconfig.json
 └── README.md
-
+```
 ## API Documentation
 Swagger documentation is available at `http://localhost:3000/api/docs` when running in development mode
 - API endpoints are documented using OpenAPI/Swagger decorators
@@ -123,10 +135,6 @@ Swagger documentation is available at `http://localhost:3000/api/docs` when runn
 4. Update documentation as needed
 5. Submit pull requests for review
 
-## Support and Resources
-- [NestJS Documentation](https://docs.nestjs.com)
-- [Sequelize Documentation](https://sequelize.org)
-- Internal team documentation (contact team lead)
 
 ## License
 [MIT licensed](LICENSE)
